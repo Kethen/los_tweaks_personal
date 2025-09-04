@@ -1,0 +1,71 @@
+
+project frameworks/base/
+diff --git a/frameworks/base/services/core/java/com/android/server/UiModeManagerService.java b/frameworks/base/services/core/java/com/android/server/UiModeManagerService.java
+index 4ff6dac08b8..75ef3ac9a8d 100644
+--- a/frameworks/base/services/core/java/com/android/server/UiModeManagerService.java
++++ b/frameworks/base/services/core/java/com/android/server/UiModeManagerService.java
+@@ -1123,10 +1123,10 @@ final class UiModeManagerService extends SystemService {
+         }
+ 
+         // Override night mode in power save mode if not in car mode
+-        if (mPowerSave && !mCarModeEnabled && !mCar) {
++        /* if (mPowerSave && !mCarModeEnabled && !mCar) {
+             uiMode &= ~Configuration.UI_MODE_NIGHT_NO;
+             uiMode |= Configuration.UI_MODE_NIGHT_YES;
+-        } else {
++        } else */{
+             uiMode = getComputedUiModeConfiguration(uiMode);
+         }
+ 
+
+project system/extras/
+diff --git a/system/extras/libfscrypt/fscrypt.cpp b/system/extras/libfscrypt/fscrypt.cpp
+index a52ed90c..9ca47bf5 100644
+--- a/system/extras/libfscrypt/fscrypt.cpp
++++ b/system/extras/libfscrypt/fscrypt.cpp
+@@ -328,6 +328,28 @@ bool EnsurePolicy(const EncryptionPolicy& policy, const std::string& directory)
+ 
+     bool already_encrypted = fscrypt_is_encrypted(fd);
+ 
++	if (kern_policy.v1.version == FSCRYPT_POLICY_V1){
++		if (kern_policy.v1.contents_encryption_mode == FSCRYPT_MODE_AES_256_HEH){
++			kern_policy.v1.contents_encryption_mode = FSCRYPT_MODE_AES_256_XTS;
++			LOG(ERROR) << "Disabled HEH for kern_policy.v1.contents_encryption_mode";
++		}
++		if (kern_policy.v1.filenames_encryption_mode == FSCRYPT_MODE_AES_256_HEH){
++			kern_policy.v1.filenames_encryption_mode = FSCRYPT_MODE_AES_256_CTS;
++			LOG(ERROR) << "Disabled HEH for kern_policy.v1.filenames_encryption_mode";
++		}
++	}else{
++		if (kern_policy.v2.contents_encryption_mode == FSCRYPT_MODE_AES_256_HEH){
++			kern_policy.v2.contents_encryption_mode = FSCRYPT_MODE_AES_256_XTS;
++			LOG(ERROR) << "Disabled HEH for kern_policy.v2.contents_encryption_mode";
++		}
++		if (kern_policy.v2.filenames_encryption_mode == FSCRYPT_MODE_AES_256_HEH){
++			kern_policy.v2.filenames_encryption_mode = FSCRYPT_MODE_AES_256_CTS;
++			LOG(ERROR) << "Disabled HEH for kern_policy.v2.filenames_encryption_mode";
++		}
++	}
++
++    LOG(ERROR) << "Setting encryption policy of " << directory << " to " << PolicyDebugString(policy);
++
+     // FS_IOC_SET_ENCRYPTION_POLICY will set the policy if the directory is
+     // unencrypted; otherwise it will verify that the existing policy matches.
+     // Setting the policy will fail if the directory is already nonempty.
+
+project system/vold/
+diff --git a/system/vold/Utils.cpp b/system/vold/Utils.cpp
+index 8ce1370..351ef54 100644
+--- a/system/vold/Utils.cpp
++++ b/system/vold/Utils.cpp
+@@ -996,6 +996,10 @@ bool IsFuseDaemon(const pid_t pid) {
+ 
+ bool IsFilesystemSupported(const std::string& fsType) {
+     std::string supported;
++    if (strcmp("f2fs", fsType.c_str()) == 0){
++    	PLOG(ERROR) << "Disabled f2fs";
++    	return false;
++    }
+     if (!ReadFileToString(kProcFilesystems, &supported)) {
+         PLOG(ERROR) << "Failed to read supported filesystems";
+         return false;
